@@ -1,0 +1,17 @@
+{
+  "name": "swagger-ui",
+  "version": "1.0.0",
+  "description": "Servidor Express que sirve una interfaz Swagger UI para documentar APIs PostgREST, mostrando la documentación OpenAPI en /api-docs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "Roilan Rodriguez Castillo",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "swagger-ui-express": "^5.0.1"
+  }
+}
