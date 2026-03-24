@@ -1,11 +1,41 @@
 require('dotenv').config();
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
+const { spawn } = require('child_process');
+const path = require('path');
+
+/**
+ * Start PostgREST process
+ */
+function startPostgREST() {
+  const postgrestPath = path.join(__dirname, 'postgrest');
+  const configPath = path.join(__dirname, 'postgrest.conf');
+
+  console.log('🚀 Starting PostgREST...');
+  
+  const postgrest = spawn(postgrestPath, [configPath]);
+
+  postgrest.stdout.on('data', (data) => {
+    console.log(`[PostgREST] ${data}`);
+  });
+
+  postgrest.stderr.on('data', (data) => {
+    // PostgREST sends logs to stderr by default, we just print them
+    console.log(`[PostgREST] ${data.toString().trim()}`);
+  });
+
+  postgrest.on('close', (code) => {
+    console.log(`[PostgREST] Process exited with code ${code}`);
+  });
+
+  return postgrest;
+}
+
+// Start PostgREST
+startPostgREST();
 
 const app = express();
-const PORT = process.env.PORT || 8080; // Puerto donde vivirá Swagger UI, en este caso la URL raíz de PostgREST
-
-// URL donde está corriendo PostgREST
+const PORT = process.env.PORT || 8080; // Port for Swagger UI
 const POSTGREST_URL = process.env.POSTGREST_URL || 'http://localhost:3000';
 
 const options = {
@@ -14,10 +44,13 @@ const options = {
   },
 };
 
-// Ruta donde se ve la documentación
+// Route for documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, options));
 
 app.listen(PORT, () => {
-  console.log(`✅ Swagger UI disponible en: http://localhost:${PORT}/api-docs`);
-  console.log(`🔗 Leyendo spec desde: ${POSTGREST_URL}`);
+  console.log('\n--- INFO ---');
+  console.log(`✅ Swagger UI available at: http://localhost:${PORT}/api-docs`);
+  console.log(`🔗 Reading spec from: ${POSTGREST_URL}`);
+  console.log('👉 Make sure your database is running and accessible as configured in postgrest.conf');
+  console.log('------------\n');
 });
