@@ -8,10 +8,12 @@ const path = require('path');
  * Start PostgREST process
  */
 function startPostgREST() {
-  const postgrestPath = path.join(__dirname, 'postgrest');
+  const isWindows = process.platform === 'win32';
+  const binaryName = isWindows ? 'postgrest.exe' : 'postgrest';
+  const postgrestPath = path.join(__dirname, binaryName);
   const configPath = path.join(__dirname, 'postgrest.conf');
 
-  console.log('🚀 Starting PostgREST...');
+  console.log(`🚀 Starting PostgREST (${binaryName})...`);
   
   const postgrest = spawn(postgrestPath, [configPath]);
 

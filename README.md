@@ -1,117 +1,85 @@
-# Swagger UI para PostgREST
+# Swagger UI + PostgREST Slave Server
 
-Este proyecto es un pequeño servidor Express que expone una instancia de **Swagger UI** para visualizar y probar la especificación OpenAPI generada por un servidor **PostgREST**.
+Este proyecto es un servidor Express que integra y automatiza la ejecución de un binario de **PostgREST**, exponiendo simultáneamente una interfaz de **Swagger UI** para documentar y probar la API generada.
 
-La UI de Swagger se sirve en la ruta `/api-docs` y consume automáticamente el documento OpenAPI expuesto por PostgREST.
+## Características principales
+
+- **Automatización**: Al iniciar el proyecto, se levanta automáticamente el proceso de PostgREST.
+- **Detección Multiplataforma**: Detecta si debe ejecutar `postgrest` (Linux/macOS) o `postgrest.exe` (Windows).
+- **Documentación automática**: Swagger UI se configura para leer la especificación OpenAPI generada por PostgREST en tiempo real.
+- **Soporte Multi-esquema**: Configurado para exponer los esquemas `api`, `public` y `auth`.
+- **Mensajes informativos**: Proporciona feedback claro en la consola sobre el estado de los servicios.
 
 ---
 
 ## Requisitos previos
 
-- **Node.js** (versión 18 o superior recomendada)
-- Un servidor **PostgREST** accesible vía HTTP (por ejemplo en `http://localhost:3000`)
-- Git (opcional, pero recomendado)
+- **Node.js** (v18 o superior)
+- **PostgreSQL**: Una base de datos en funcionamiento (por defecto configurada en `localhost:5430`).
+- **Binario de PostgREST**: El archivo ejecutable `postgrest` (Linux/macOS) o `postgrest.exe` (Windows) debe estar en la raíz del proyecto.
 
 ---
 
 ## Instalación
 
-Clona el repositorio (o copia los archivos del proyecto) y luego instala las dependencias:
+1. Instala las dependencias de Node.js:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm install
-```
-
-Esto instalará:
-
-- `express`: servidor HTTP
-- `swagger-ui-express`: middleware que sirve la UI de Swagger
-- `dotenv`: manejo de variables de entorno
+2. (Solo Linux/macOS) Asegúrate de que el binario `postgrest` tenga permisos de ejecución:
+   ```bash
+   chmod +x postgrest
+   ```
 
 ---
 
-## Configuración del entorno
+## Configuración
 
-El proyecto utiliza **variables de entorno** para definir:
+### 1. PostgREST (`postgrest.conf`)
+El archivo `postgrest.conf` controla el comportamiento del motor de la API:
 
-- `PORT`: puerto donde se expone Swagger UI.
-- `POSTGREST_URL`: URL base donde está corriendo PostgREST.
+- `db-uri`: URI de conexión a PostgreSQL.
+- `db-schemas`: Esquemas expuestos (`api, public, auth`).
+- `db-anon-role`: Rol para peticiones no autenticadas (debe existir en la DB).
+- `server-port`: Puerto donde corre PostgREST (por defecto `3000`).
 
-### Archivo `.env`
+### 2. Variables de Entorno (`.env`)
+Configura el servidor de Swagger UI:
 
-1. Copia el archivo de ejemplo:
-
-```bash
-cp .env.example .env
-```
-
-2. Edita `.env` con los valores adecuados para tu entorno:
-
-```env
-PORT=8080
-POSTGREST_URL=http://localhost:3000
-```
-
-- `PORT`: puerto donde se expondrá Swagger UI, por defecto `8080`.
-- `POSTGREST_URL`: URL base de tu servidor PostgREST.  
-  - Por ejemplo, si PostgREST corre en `http://localhost:3000`, y allí expone el documento OpenAPI en la raíz (`/`), puedes dejar el valor por defecto.
-
-> **Nota:** El archivo `.env` está ignorado por Git mediante `.gitignore`. No lo subas al repositorio.
+- `PORT`: Puerto para Swagger UI (por defecto `8080`).
+- `POSTGREST_URL`: URL donde Swagger buscará la especificación (por defecto `http://localhost:3000`).
 
 ---
 
-## Cómo funciona
+## Uso
 
-El archivo principal es `index.js`:
-
-- Carga las variables de entorno mediante `dotenv`.
-- Configura un servidor Express.
-- Configura Swagger UI en la ruta `/api-docs`.
-- Apunta Swagger UI al JSON de OpenAPI que sirve PostgREST desde `POSTGREST_URL`.
-
-En tiempo de ejecución:
-
-- El servidor escucha en el puerto definido por `PORT` o usa `8080` como valor por defecto.
-- Swagger UI consulta la especificación en `POSTGREST_URL` (por ejemplo, `http://localhost:3000/`).
-
----
-
-## Arrancar el servidor
-
-Una vez configurado el archivo `.env` y con las dependencias instaladas:
+Para iniciar ambos servicios (PostgREST y Swagger UI):
 
 ```bash
 npm start
 ```
 
-Por defecto, verás en la consola algo como:
-
-- `Swagger UI disponible en: http://localhost:8080/api-docs`
-- `Leyendo spec desde: http://localhost:3000`
-
-Abre tu navegador en:
-
-```text
-http://localhost:8080/api-docs
-```
-
-Ahí podrás ver la documentación interactiva de tu API PostgREST.
+### Endpoints disponibles:
+- **Swagger UI**: [http://localhost:8080/api-docs](http://localhost:8080/api-docs)
+- **API (PostgREST)**: [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Personalización
+## Arquitectura y Detalles de Implementación
 
-- **Puerto del servidor Swagger UI**: cambia `PORT` en tu `.env`.
-- **Origen de la especificación OpenAPI**: cambia `POSTGREST_URL` en tu `.env` para apuntar a otro servidor PostgREST (por ejemplo, un entorno de staging o producción).
+### Inicio de procesos multiplataforma
+El archivo `index.js` detecta automáticamente el sistema operativo (`win32` para Windows) y selecciona el binario adecuado (`postgrest.exe` o `postgrest`). Utiliza `child_process.spawn` para iniciar el proceso como un hijo. Los logs de PostgREST se capturan y se muestran en la consola principal con el prefijo `[PostgREST]`.
+
+### Flujo de Documentación
+1. `index.js` inicia PostgREST.
+2. PostgREST genera un documento OpenAPI en su raíz (`/`).
+3. El middleware `swagger-ui-express` en el servidor Express consume ese documento y lo renderiza en `/api-docs`.
 
 ---
 
-## Problemas comunes
+## Solución de problemas
 
-- **La página `/api-docs` no muestra nada o da error de carga de la spec**  
-  - Verifica que `POSTGREST_URL` sea accesible desde el servidor donde corre este proyecto.
-  - Comprueba que PostgREST esté sirviendo correctamente su especificación OpenAPI en la ruta configurada (por defecto la raíz `/`).
-
-- **El servidor no arranca**  
-  - Asegúrate de haber ejecutado `npm install`.
-  - Comprueba que el puerto definido en `PORT` no esté siendo utilizado por otro proceso.
+- **Error de conexión a la DB**: Verifica que la `db-uri` en `postgrest.conf` sea correcta y que la base de datos sea accesible.
+- **Swagger no carga la especificación**: Asegúrate de que PostgREST haya iniciado correctamente en el puerto `3000`.
+- **Esquemas no visibles**: El rol `anon` debe tener permisos de `USAGE` sobre los esquemas configurados en la base de datos.
