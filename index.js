@@ -42,9 +42,39 @@ const POSTGREST_URL = process.env.POSTGREST_URL || 'http://localhost:3000';
 
 const options = {
   swaggerOptions: {
-    url: `${POSTGREST_URL}/`, 
+    url: '/openapi-spec',
   },
 };
+
+// Middleware to intercept OpenAPI spec and add security definitions (Swagger 2.0)
+app.get('/openapi-spec', async (req, res) => {
+  try {
+    const response = await fetch(`${POSTGREST_URL}/`);
+    const spec = await response.json();
+
+    // Inject security definitions
+    spec.securityDefinitions = {
+      JWT: {
+        type: 'apiKey',
+        name: 'Authorization',
+        in: 'header',
+        description: 'JWT Token. Formato: Bearer <token>'
+      }
+    };
+
+    // Apply security globally
+    spec.security = [
+      {
+        JWT: []
+      }
+    ];
+
+    res.json(spec);
+  } catch (error) {
+    console.error('Error fetching OpenAPI spec:', error);
+    res.status(500).json({ error: 'Error fetching OpenAPI spec' });
+  }
+});
 
 // Route for documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, options));
